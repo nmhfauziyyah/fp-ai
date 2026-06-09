@@ -1,59 +1,37 @@
 /* ================================================================
-   ImageOcrPanel.jsx — Panel Unggah Gambar + EasyOCR Integration
+   ImageOcrPanel.jsx — Panel Unggah Gambar (OCR via Backend)
    Props:
-   - onAnalyze : (ocrText: string, tab: string, file: File) => void
+   - onAnalyze : (inputData: string, tab: 'image', imageFile: File) => void
    - onReset   : () => void
    - isLoading : boolean
 
-   ────────────────────────────────────────────────────────────────
-   NOTE untuk Ardhi / Afin:
-   Saat ini OCR menggunakan mock heuristic di frontend (generateMockOCR).
-   Untuk menghubungkan ke backend EasyOCR:
-   1. Uncomment blok "// TODO (Ardhi)" di fungsi handleAnalyze
-   2. Pastikan endpoint POST /ocr aktif di Flask backend
-   3. Import { extractOCR } from '../../services/api'
-   ────────────────────────────────────────────────────────────────
+   File gambar dikirim langsung ke backend POST /predict sebagai
+   multipart/form-data. Backend (Ardhi) yang menangani EasyOCR.
+   Frontend tidak perlu mock OCR lagi.
    ================================================================ */
 
 import React, { useState, useRef, useCallback } from 'react';
 import Button from '../ui/Button';
 
-// ── Mock OCR heuristic (sementara backend EasyOCR belum siap) ───────────────
-const generateMockOCR = (filename) => {
-  const name = filename.toLowerCase();
-  if (name.includes('honda') || name.includes('loker') || name.includes('kerja')) {
-    return 'Dibuka lagi lowongan kerja terbaru (HONDA) resmi untuk tahun 2026! Isi formulir pendaftaran bio profil nomor Telegram';
-  }
-  if (name.includes('cuaca') || name.includes('bmkg') || name.includes('hujan')) {
-    return 'Peringatan Dini Cuaca Ekstrem Wilayah Jawa Timur 2-4 Juni 2026 BMKG Juanda';
-  }
-  if (name.includes('pensiun') || name.includes('menhan')) {
-    return 'Kabar gembira! Menteri Pertahanan Bapak Sjafrie Sjamsoeddin secara resmi mengumumkan program dana bantuan tunai langsung dari pemerintah';
-  }
-  return `HASIL DETEKSI OCR: Teks terekstrak dari berkas gambar ${filename} untuk dianalisis oleh IndoBERT.`;
-};
+
 
 /**
  * @param {Object}   props
- * @param {Function} props.onAnalyze - Dipanggil dengan (ocrText, 'image', file)
+ * @param {Function} props.onAnalyze - Dipanggil dengan (filename, 'image', File)
  * @param {Function} props.onReset   - Reset result panel
  * @param {boolean}  props.isLoading
  */
 export default function ImageOcrPanel({ onAnalyze, onReset, isLoading }) {
   const [selectedFile, setSelectedFile] = useState(null);
-  const [previewSrc, setPreviewSrc] = useState('');
-  const [mockOcrText, setMockOcrText] = useState('');
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [previewSrc, setPreviewSrc]     = useState('');
+  const [isDragOver, setIsDragOver]     = useState(false);
 
   const fileInputRef = useRef(null);
 
   // ── Proses file yang dipilih ─────────────────────────────────────────────
   const processFile = useCallback((file) => {
     if (!file || !file.type.startsWith('image/')) return;
-
-    const ocrText = generateMockOCR(file.name);
     setSelectedFile(file);
-    setMockOcrText(ocrText);
     setPreviewSrc(URL.createObjectURL(file));
     onReset();
   }, [onReset]);
@@ -78,36 +56,19 @@ export default function ImageOcrPanel({ onAnalyze, onReset, isLoading }) {
   const handleRemoveImage = () => {
     setSelectedFile(null);
     setPreviewSrc('');
-    setMockOcrText('');
     if (fileInputRef.current) fileInputRef.current.value = '';
     onReset();
   };
 
   // ── Trigger analisis ─────────────────────────────────────────────────────
-  const handleAnalyze = async () => {
+  const handleAnalyze = () => {
     if (!selectedFile) {
       alert('Silakan unggah gambar screenshot berita terlebih dahulu!');
       return;
     }
-
-    // ── SAAT INI: menggunakan mock OCR teks ─────────────────────────────
-    const ocrResult = mockOcrText;
-
-    // ────────────────────────────────────────────────────────────────────
-    // TODO (Ardhi): Uncomment blok di bawah untuk hit backend EasyOCR
-    // import { extractOCR } from '../../services/api';
-    // try {
-    //   const { text } = await extractOCR(selectedFile);
-    //   ocrResult = text;
-    // } catch (err) {
-    //   console.error('OCR backend gagal, fallback ke mock:', err);
-    //   ocrResult = mockOcrText; // fallback
-    // }
-    // ────────────────────────────────────────────────────────────────────
-
-    // Kirim: (teks OCR sebagai inputText, tipe tab, teks OCR sebagai ocrText untuk ditampilkan di ResultBoard)
-    // Catatan: argumen ke-3 HARUS string, bukan File object (File object tidak bisa dirender React)
-    onAnalyze(ocrResult, 'image', ocrResult);
+    // Kirim File object langsung ke hook → hook akan POST ke /predict sebagai FormData
+    // Backend (Ardhi) yang handle EasyOCR dan extract text dari gambar
+    onAnalyze(selectedFile.name, 'image', selectedFile);
   };
 
   return (
@@ -210,17 +171,15 @@ export default function ImageOcrPanel({ onAnalyze, onReset, isLoading }) {
             <p className="text-[11px] text-gray-400 leading-relaxed">
               Modul EasyOCR akan memetakan koordinat teks, mengekstrak karakter tulisan secara otomatis, lalu mengumpankannya ke normalisasi NLP.
             </p>
-            {/* OCR Mock Preview */}
-            {mockOcrText && (
-              <div className="mt-1 p-2 rounded-lg bg-darkBg/60 border border-darkBorder/60">
-                <span className="text-[9px] text-brandMint font-mono font-bold uppercase tracking-wider">
-                  <i className="fa-solid fa-eye mr-1" /> OCR Preview:
-                </span>
-                <p className="text-[10px] text-gray-400 font-mono italic mt-1 line-clamp-2">
-                  "{mockOcrText}"
-                </p>
-              </div>
-            )}
+            {/* Info: OCR diproses di backend */}
+            <div className="mt-1 p-2 rounded-lg bg-darkBg/60 border border-darkBorder/60">
+              <span className="text-[9px] text-brandMint font-mono font-bold uppercase tracking-wider flex items-center gap-1">
+                <i className="fa-solid fa-server" /> Gambar dikirim ke backend untuk ekstraksi OCR
+              </span>
+              <p className="text-[10px] text-gray-500 mt-1">
+                EasyOCR akan mengekstrak teks dari gambar secara otomatis di server.
+              </p>
+            </div>
           </div>
         </div>
       )}

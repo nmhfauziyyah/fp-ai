@@ -1,110 +1,78 @@
 /* ================================================================
-   api.js — REST API Gateway Hoax Detector
-   ================================================================
-   Modul ini adalah jembatan antara React frontend dan Flask backend.
+   api.js — REST API Service untuk Hoax Detector
+   Single endpoint: POST /predict di localhost:5000
 
-   Panduan untuk Afin (Backend Engineer):
-   ─────────────────────────────────────
-   1. Pastikan Flask berjalan di localhost:5000 (atau sesuaikan BASE_URL)
-   2. Endpoint yang sudah tersedia: POST /predict
-      - Request body: { "text": "..." }
-      - Response: { label: "HOAX"|"VALID", score: 0.0-1.0, ... }
-        (sesuaikan dengan output Gradio model ardhptr21/hoax-detection-id)
-   3. Endpoint OCR placeholder: POST /ocr
-      - Request body: FormData dengan key "image"
-      - Response: { text: "..." }  ← diisi Ardhi setelah EasyOCR siap
+   Cara kirim per tipe input:
+   ─ text  → JSON body    { "text":  "..." }
+   ─ url   → JSON body    { "url":   "..." }
+   ─ image → FormData     key: "image" (file)
 
-   Panduan untuk Nima (Frontend):
-   ───────────────────────────────
-   Ubah VITE_API_BASE_URL di file .env jika backend berjalan di host/port lain.
-   Saat development, Vite proxy sudah menangani /predict dan /ocr → localhost:5000.
+   Contoh response dari Gradio model:
+   {
+     "label": "LABEL_0" | "LABEL_1",   // LABEL_0=valid, LABEL_1=hoax (verify!)
+     "score": 0.92                      // confidence 0.0–1.0
+   }
    ================================================================ */
 
 import axios from 'axios';
 
-// ── Base URL ────────────────────────────────────────────────────────────────
-// Di development: diproxy Vite ke localhost:5000 (lihat vite.config.js)
-// Di production : set VITE_API_BASE_URL di .env file
+// Dev: request lewat Vite proxy (vite.config.js → localhost:5000), tidak ada CORS issue
+// Prod: set VITE_API_BASE_URL=https://your-api.com di .env
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 30000, // 30 detik
+  timeout: 60000, // 60 detik (model Gradio bisa lambat)
 });
 
-// ── Request Interceptor (opsional untuk logging) ─────────────────────────────
-apiClient.interceptors.request.use(
-  (config) => {
-    // Contoh: tambahkan auth header di sini jika diperlukan
-    // config.headers['Authorization'] = `Bearer ${token}`;
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// ── Response Interceptor (centralized error handling) ────────────────────────
+// ── Response interceptor: tangani error HTTP secara terpusat ────────────────
 apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const message =
-      error.response?.data?.error ||
-      error.response?.data?.message ||
-      error.message ||
-      'Terjadi kesalahan saat menghubungi server.';
-    return Promise.reject(new Error(message));
+  (res) => res,
+  (err) => {
+    const msg =
+      err.response?.data?.error ||
+      err.response?.data?.message ||
+      err.message ||
+      'Gagal menghubungi server.';
+    return Promise.reject(new Error(msg));
   }
 );
 
 // ============================================================================
-// ENDPOINT 1: POST /predict
-// Kirim teks berita dan dapatkan hasil klasifikasi IndoBERT
+// predictText — kirim teks berita langsung
+// Body: application/json → { "text": "..." }
 // ============================================================================
-/**
- * Mengirim teks ke model IndoBERT via Flask backend untuk diklasifikasikan.
- *
- * @param {string} text - Teks berita / konten yang akan dianalisis
- * @returns {Promise<Object>} Response dari backend (label, score, dsb.)
- *
- * Contoh response yang diharapkan dari Gradio model:
- * {
- *   label: "HOAX" | "VALID",
- *   score: 0.92,          // confidence 0.0 - 1.0
- *   category: "...",      // (opsional) kategori disinformasi
- *   explanation: "..."    // (opsional) penjelasan model
- * }
- */
-export const predictHoax = async (text) => {
-  const response = await apiClient.post('/predict', { text });
-  return response.data;
+export const predictText = async (text) => {
+  const res = await apiClient.post('/predict', { text }, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return res.data;
 };
 
 // ============================================================================
-// ENDPOINT 2: POST /ocr  [PLACEHOLDER — Ardhi / Afin]
-// Kirim gambar dan dapatkan teks hasil EasyOCR
+// predictUrl — kirim URL berita (backend akan crawl sendiri)
+// Body: application/json → { "url": "..." }
 // ============================================================================
-/**
- * [PLACEHOLDER] Mengirim file gambar ke backend EasyOCR.
- * Saat ini belum tersambung ke backend. Ardhi mengisi implementasi di sisi server.
- *
- * @param {File} imageFile - File objek dari input/drag-drop
- * @returns {Promise<{text: string}>} Teks hasil ekstraksi OCR
- *
- * TODO (Ardhi): Implementasikan endpoint POST /ocr di Flask yang menerima
- * multipart/form-data dengan key "image" dan mengembalikan { "text": "..." }
- */
-export const extractOCR = async (imageFile) => {
+export const predictUrl = async (url) => {
+  const res = await apiClient.post('/predict', { url }, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return res.data;
+};
+
+// ============================================================================
+// predictImage — kirim file gambar (backend EasyOCR + predict)
+// Body: multipart/form-data → key "image" = File
+// PENTING: image harus dikirim sebagai FormData, bukan JSON!
+// ============================================================================
+export const predictImage = async (imageFile) => {
   const formData = new FormData();
   formData.append('image', imageFile);
 
-  const response = await axios.post(`${BASE_URL}/ocr`, formData, {
+  const res = await apiClient.post('/predict', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 60000, // OCR butuh lebih lama
   });
-
-  return response.data; // { text: "..." }
+  return res.data;
 };
 
 export default apiClient;

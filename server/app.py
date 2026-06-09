@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from gradio_client import Client
 import os
 from utils.ocr import OCRProcessor
@@ -7,6 +8,9 @@ from utils.crawler import Crawler
 
 app = Flask(__name__)
 app.config["DEBUG"] = os.getenv("DEBUG", "False").lower() == "true"
+
+# Izinkan request dari frontend dev (localhost:5173) dan production
+CORS(app, origins=["*"])
 
 client = Client("ardhptr21/hoax-detection-id")
 
@@ -25,34 +29,42 @@ inference = Inference()
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    # cek request apakah link atau text atau gambar
-    if "url" in request.json:
-        url = request.json["url"]
+    data = request.get_json(silent=True)
+
+    if data and "url" in data:
+        url = data["url"]
         crawler = Crawler()
         text = crawler.crawl_berita(url)
+
         if text:
-            result = inference.predict(text)
-            return jsonify(result), 200
-        else:
-            return jsonify({"error": "Failed to crawl the news content from the provided URL."}), 400
-        
-    elif "text" in request.json:
-        text = request.json["text"]
-        result = inference.predict(text)
-        return jsonify(result), 200
-    
+            return jsonify(inference.predict(text)), 200
+
+        return jsonify({
+            "error": "Failed to crawl the news content."
+        }), 400
+
+    elif data and "text" in data:
+        return jsonify(
+            inference.predict(data["text"])
+        ), 200
+
     elif "image" in request.files:
         image = request.files["image"]
-        text = inference.ocr_processor.extract_text_from_image(image)
+
+        text = inference.ocr_processor.extract_text(image)
+        print(image)
+
         if text:
-            result = inference.predict(text)
-            return jsonify(result), 200
-        else:
-            return jsonify({"error": "Failed to extract text from the provided image."}), 400
-        
-    else:
-        return jsonify({"error": "No valid input provided. Please provide a URL, text, or image."}), 400
-    
+            return jsonify(inference.predict(text)), 200
+
+        return jsonify({
+            "error": "Failed to extract text from image."
+        }), 400
+
+    return jsonify({
+        "error": "No valid input provided."
+    }), 400
+
     # data = request.get_json()
     # text = data.get("text", "")
     # if not text:
@@ -64,6 +76,6 @@ def predict():
 
 if __name__ == "__main__":
     HOST = os.getenv("HOST", "localhost")
-    PORT = int(os.getenv("PORT", 5000))
+    PORT = int(os.getenv("PORT", 5001))
 
     app.run(host=HOST, port=PORT)

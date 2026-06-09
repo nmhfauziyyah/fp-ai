@@ -35,6 +35,7 @@ export default function Dashboard() {
     analysisStatus,
     loadingStep,
     result,
+    errorMsg,
     setActiveTab,
     analyze,
     reset,
@@ -89,6 +90,8 @@ export default function Dashboard() {
           result={result}
           loadingStep={loadingStep}
           activeTab={activeTab}
+          errorMsg={errorMsg}
+          onReset={reset}
         />
 
       </main>
