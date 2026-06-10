@@ -9,7 +9,6 @@ from utils.crawler import Crawler
 app = Flask(__name__)
 app.config["DEBUG"] = os.getenv("DEBUG", "False").lower() == "true"
 
-# Izinkan request dari frontend dev (localhost:5173) dan production
 CORS(app, origins=["*"])
 
 client = Client("ardhptr21/hoax-detection-id")
@@ -34,13 +33,13 @@ def predict():
     if data and "url" in data:
         url = data["url"]
         crawler = Crawler()
-        text = crawler.crawl_berita(url)
+        text = crawler.crawl_berita(url)        
 
         if text:
             return jsonify(inference.predict(text)), 200
 
         return jsonify({
-            "error": "Failed to crawl the news content."
+            "error": "Source doesn't allow content extraction, try copying the news text directly instead."
         }), 400
 
     elif data and "text" in data:
@@ -52,13 +51,14 @@ def predict():
         image = request.files["image"]
 
         text = inference.ocr_processor.extract_text(image)
-        print(image)
 
         if text:
-            return jsonify(inference.predict(text)), 200
+            return jsonify(
+                inference.predict(text)
+            ), 200
 
         return jsonify({
-            "error": "Failed to extract text from image."
+            "error": "Failed to extract text from image, try typing the news text directly instead."
         }), 400
 
     return jsonify({
@@ -76,6 +76,6 @@ def predict():
 
 if __name__ == "__main__":
     HOST = os.getenv("HOST", "localhost")
-    PORT = int(os.getenv("PORT", 5001))
+    PORT = int(os.getenv("PORT", 5000))
 
     app.run(host=HOST, port=PORT)

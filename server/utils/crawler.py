@@ -5,22 +5,31 @@ from bs4 import BeautifulSoup
 
 
 class Crawler:
-    def __init__(self):
-        pass
-
     def crawl_berita(self, url):
         try:
-            response = requests.get(url)
-            response.raise_for_status() 
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            #Mengambil teks dari tag <p>
-            paragraphs = soup.find_all('p')
-            isi_berita = ' '.join([p.get_text() for p in paragraphs])
-            
+            headers = {
+                "User-Agent": "Mozilla/5.0"
+            }
+
+            response = requests.get(
+                url,
+                headers=headers,
+                timeout=10
+            )
+
+            response.raise_for_status()
+
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            paragraphs = soup.find_all("p")
+            isi_berita = " ".join(
+                p.get_text(strip=True)
+                for p in paragraphs
+            )
+
             return isi_berita
-        except requests.exceptions.RequestException as e:
-            print(f"Error saat mengakses URL: {e}")
+
+        except Exception as e:                      
             return None
             
     

@@ -1,22 +1,52 @@
+# import easyocr
+
+# class OCRProcessor:
+#     def __init__(self):                
+#         self.reader = easyocr.Reader(['id', 'en'], gpu=False)
+
+#     def extract_text(self, image_path):
+#         try:            
+#             result = self.reader.readtext(image_path, detail=0, paragraph=True)
+            
+#             if not result:
+#                 return None
+                            
+#             extracted_text = ' '.join(result)
+#             return extracted_text
+            
+#         except Exception as e:
+#             # print(f"Gagal memproses gambar {image_path}: {e}")
+#             return None
+
+
 import easyocr
+import numpy as np
+from PIL import Image
+
 
 class OCRProcessor:
-    def __init__(self):        
-        # Inisialisasi ditaruh di sini agar tidak di-load berulang-ulang
+    def __init__(self):
         self.reader = easyocr.Reader(['id', 'en'], gpu=False)
 
-    def extract_text(self, image_path):
+    def extract_text(self, image_file):
         try:
-            # paragraph=True bagus untuk mempertahankan struktur blok teks berita
-            result = self.reader.readtext(image_path, detail=0, paragraph=True)
-            
+            # Convert upload → PIL → numpy
+            image = Image.open(image_file).convert("RGB")
+            image = np.array(image)
+
+            result = self.reader.readtext(
+                image,
+                detail=0,
+                paragraph=True
+            )
+
             if not result:
                 return None
-                
-            # Gunakan spasi untuk menggabungkan list hasil bacaan
-            extracted_text = ' '.join(result)
+
+            extracted_text = " ".join(result)
+
             return extracted_text
-            
+
         except Exception as e:
-            # print(f"Gagal memproses gambar {image_path}: {e}")
+            print("OCR Error:", e)
             return None
