@@ -1,3 +1,5 @@
 .venv/
 .DS_Store
 gambar/
+__pycache__/
+.env

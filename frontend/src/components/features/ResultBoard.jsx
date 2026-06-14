@@ -106,7 +106,7 @@ export default function ResultBoard({ status, result, loadingStep, activeTab, er
           </div>
           <div className="mt-2 p-3 rounded-lg bg-darkBg/60 border border-darkBorder text-left text-[11px] font-mono text-gray-500 w-full max-w-[320px]">
             <p>$ uv run python server/app.py</p>
-            <p className="text-brandMint mt-1">→ Running on http://localhost:5001</p>
+            <p className="text-brandMint mt-1">→ Running on http://localhost:5000</p>
           </div>
           <button
             onClick={onReset}

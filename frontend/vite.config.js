@@ -13,12 +13,12 @@ export default defineConfig({
       // Afin: pastikan Flask berjalan di port 5000 sebelum menjalankan frontend.
       // ─────────────────────────────────────────────────────────────────────
       '/predict': {
-        target: 'http://localhost:5001',
+        target: 'http://localhost:5000',
         changeOrigin: true,
         rewrite: (path) => path,
       },
       '/ocr': {
-        target: 'http://localhost:5001',
+        target: 'http://localhost:5000',
         changeOrigin: true,
         rewrite: (path) => path,
       },

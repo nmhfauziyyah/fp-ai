@@ -152,7 +152,7 @@ export function useHoaxAnalysis() {
 
     } catch (err) {
       console.error('[useHoaxAnalysis] API error:', err.message);
-      setErrorMsg(err.message || 'Gagal menghubungi server. Pastikan backend berjalan di localhost:5001.');
+      setErrorMsg(err.message || 'Gagal menghubungi server. Pastikan backend berjalan di localhost:5000.');
       setAnalysisStatus('error');
     }
   }, []);
