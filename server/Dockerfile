@@ -1,12 +1,22 @@
-FROM python:3.12-alpine
+FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN apk add --no-cache tesseract-ocr tesseract-ocr-data-eng build-base gcc musl-dev libffi-dev jpeg-dev zlib-dev
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        tesseract-ocr \
+        tesseract-ocr-eng \
+        gcc \
+        g++ \
+        libffi-dev \
+        libjpeg62-turbo-dev \
+        zlib1g-dev && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
