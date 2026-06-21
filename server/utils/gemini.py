@@ -4,6 +4,7 @@ import json
 import os
 
 API_KEY = os.getenv("GENAI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
 client = genai.Client(api_key=API_KEY)
 
 
@@ -64,7 +65,7 @@ TEXT TO ANALYZE:
 """
 
     response = client.models.generate_content(
-        model="gemini-3.5-flash",
+        model=GEMINI_MODEL,
         contents=prompt,
         config=types.GenerateContentConfig(response_mime_type="application/json"),
     )

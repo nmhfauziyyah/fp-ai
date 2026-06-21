@@ -1,0 +1,11 @@
+services:
+  hoax-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hoax-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"

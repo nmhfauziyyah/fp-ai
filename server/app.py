@@ -30,12 +30,14 @@ class Inference:
 
     def predict_custom(self, text):
         preprocessed_text = self.text_preprocessor.clean(text)
-        result = client.predict(text=preprocessed_text, api_name="/detect_hoax")
-        return result
+        return client.predict(text=preprocessed_text, api_name="/detect_hoax")
 
     def predict(self, text):
-        # return self.predict_custom(text)
-        return self.predict_llm(text)
+        try:
+            return self.predict_llm(text)
+        except Exception as e:
+            print(f"LLM prediction failed: {e}")
+            return self.predict_custom(text)
 
 
 inference = Inference()
